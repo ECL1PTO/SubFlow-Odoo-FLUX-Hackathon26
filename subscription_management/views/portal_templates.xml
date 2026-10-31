@@ -84,6 +84,9 @@
                 <div class="col-md-6">
                     <strong>Next Invoice:</strong> <t t-esc="subscription.next_invoice_date or '-'"/>
                 </div>
+                <div class="col-md-6" t-if="subscription.state == 'quotation' and subscription.validity_date">
+                    <strong>Quotation Valid Until:</strong> <t t-esc="subscription.validity_date"/>
+                </div>
                 <div class="col-md-6">
                     <strong>Total:</strong>
                     <span t-field="subscription.amount_total" t-options='{"widget": "monetary", "display_currency": subscription.currency_id}'/>

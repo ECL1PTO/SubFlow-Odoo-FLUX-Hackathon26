@@ -1,7 +1,11 @@
+import logging
+
 from dateutil.relativedelta import relativedelta
 
 from odoo import _, api, fields, models
-from odoo.exceptions import UserError
+from odoo.exceptions import UserError, ValidationError
+
+_logger = logging.getLogger(__name__)
 
 PERIOD_DELTA = {
     'daily': lambda n: relativedelta(days=n),
@@ -80,6 +84,12 @@ class SubscriptionBilling(models.Model):
         for subscription in self:
             if not subscription.next_invoice_date:
                 subscription.next_invoice_date = subscription.start_date
+        return res
+
+    def action_reset_to_draft(self):
+        """Clear the billing schedule, so a restarted subscription never bills the idle gap."""
+        res = super().action_reset_to_draft()
+        self.write({'next_invoice_date': False})
         return res
 
     def _line_discount_percent(self, line, discounts):
@@ -171,7 +181,8 @@ class SubscriptionBilling(models.Model):
                 continue
             try:
                 subscription.generate_invoice()
-            except UserError:
+            except (UserError, ValidationError):
+                _logger.exception('Skipping subscription %s during automatic billing.', subscription.name)
                 continue
         return True
 

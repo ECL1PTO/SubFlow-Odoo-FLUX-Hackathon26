@@ -1,3 +1,5 @@
+from dateutil.relativedelta import relativedelta
+
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
 
@@ -20,6 +22,11 @@ class SubscriptionSubscription(models.Model):
     start_date = fields.Date(required=True, index=True, default=fields.Date.context_today, tracking=True)
     expiry_date = fields.Date(index=True, tracking=True)
     payment_term_id = fields.Many2one('account.payment.term', string='Payment Terms')
+    validity_date = fields.Date(
+        string='Quotation Valid Until', readonly=True, copy=False, tracking=True,
+        help='Set when the quotation is sent, from the validity configured on the plan.',
+    )
+    is_quotation_expired = fields.Boolean(compute='_compute_is_quotation_expired')
     line_ids = fields.One2many('subscription.line', 'subscription_id', string='Lines', copy=True)
 
     state = fields.Selection(
@@ -51,6 +58,16 @@ class SubscriptionSubscription(models.Model):
             subscription.amount_tax = sum(lines.mapped('price_tax'))
             subscription.amount_total = sum(lines.mapped('price_total'))
 
+    @api.depends('state', 'validity_date')
+    def _compute_is_quotation_expired(self):
+        today = fields.Date.context_today(self)
+        for subscription in self:
+            subscription.is_quotation_expired = bool(
+                subscription.state == 'quotation'
+                and subscription.validity_date
+                and subscription.validity_date < today
+            )
+
     @api.constrains('start_date', 'expiry_date')
     def _check_dates(self):
         for subscription in self:
@@ -74,13 +91,24 @@ class SubscriptionSubscription(models.Model):
 
     def action_send_quotation(self):
         self._require_state(('draft',), _('send'))
+        today = fields.Date.context_today(self)
         for subscription in self:
             if not subscription.line_ids:
                 raise UserError(_('Add at least one line before sending %s as a quotation.') % subscription.name)
+            validity_days = subscription.plan_id.quotation_validity_days
+            subscription.validity_date = (
+                today + relativedelta(days=validity_days) if validity_days > 0 else False
+            )
         self.write({'state': 'quotation'})
 
     def action_confirm(self):
         self._require_state(('quotation',), _('confirm'))
+        expired = self.filtered('is_quotation_expired')
+        if expired:
+            raise UserError(_(
+                'The quotation %(name)s expired on %(date)s. Reset it to draft and send it again.',
+                name=expired[0].name, date=expired[0].validity_date,
+            ))
         self.write({'state': 'confirmed'})
 
     def action_start(self):
@@ -111,7 +139,7 @@ class SubscriptionSubscription(models.Model):
 
     def action_reset_to_draft(self):
         self._require_state(('quotation', 'closed'), _('reset'))
-        self.write({'state': 'draft'})
+        self.write({'state': 'draft', 'validity_date': False})
 
 
 class SubscriptionLine(models.Model):

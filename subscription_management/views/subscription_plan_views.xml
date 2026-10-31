@@ -42,6 +42,7 @@
                             <field name="price"/>
                             <field name="currency_id" invisible="1"/>
                             <field name="min_quantity"/>
+                            <field name="quotation_validity_days"/>
                         </group>
                         <group string="Availability &amp; Rules">
                             <field name="date_start"/>

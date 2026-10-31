@@ -43,6 +43,46 @@ Draft -> Quotation -> Confirmed -> Active -> Closed
 Each transition is a button on the form, valid only from the right state.
 Pausing and early closing are allowed or blocked per plan.
 
+A quotation carries a validity date, taken from the plan's quotation validity in
+days. Once it passes, the quotation can no longer be confirmed until it is reset
+to draft and sent again. Set the validity to 0 for a quotation that never expires.
+
+## Billing
+
+Every active subscription tracks `next_invoice_date`. A daily scheduled action
+invoices the ones that are due, then moves the date forward by the plan's period
+multiplied by its interval, so "every 3 months" is one plan rather than three.
+Because the date advances in the same transaction as the invoice, running the
+cron twice never bills twice.
+
+Discount rules apply automatically at invoicing: percentage rules set the
+discount on the invoice line so tax is computed on the discounted base, and
+fixed-amount rules are added as a negative line. Rules are filtered by date
+window, minimum amount, minimum quantity, product scope and a usage cap.
+
+Recording a payment goes through Odoo's payment register, so the payment is
+reconciled against the invoice and the status becomes Paid.
+
+## Dashboard
+
+A dashboard reports active subscriptions, revenue, outstanding amount and
+overdue invoice count. The figures come from SQL aggregates over posted customer
+invoices, not from loading records in Python.
+
+## Tests
+
+```bash
+docker compose stop odoo
+docker compose run --rm --no-deps odoo odoo -d subflow -u subscription_management \
+  --stop-after-init --test-enable --test-tags=/subscription_management \
+  --http-port=8070 --db_host=db --db_user=odoo --db_password=odoo
+docker compose up -d odoo
+```
+
+42 tests cover the lifecycle transitions, invoice generation and tax carry-over,
+cron double-billing, discount rules, quotation validity, payment recording,
+dashboard figures, password rules, access rights, and the portal pages over HTTP.
+
 ## Repository layout
 
 ```

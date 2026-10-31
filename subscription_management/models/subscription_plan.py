@@ -34,6 +34,11 @@ class SubscriptionPlan(models.Model):
     price = fields.Monetary(string='Price', currency_field='currency_id')
 
     min_quantity = fields.Float(string='Minimum Quantity', default=1.0)
+    quotation_validity_days = fields.Integer(
+        string='Quotation Validity (Days)',
+        default=30,
+        help='How long a quotation for this plan stays valid. 0 means it never expires.',
+    )
     date_start = fields.Date(string='Start Date')
     date_end = fields.Date(string='End Date')
 
