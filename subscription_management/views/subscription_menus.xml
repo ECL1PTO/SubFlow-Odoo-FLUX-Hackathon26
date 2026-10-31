@@ -6,6 +6,12 @@
               sequence="15"
               groups="group_subscription_staff"/>
 
+    <menuitem id="menu_subscription_dashboard"
+              name="Dashboard"
+              parent="menu_subscription_root"
+              action="action_subscription_dashboard"
+              sequence="5"/>
+
     <menuitem id="menu_subscription_operations"
               name="Subscriptions"
               parent="menu_subscription_root"

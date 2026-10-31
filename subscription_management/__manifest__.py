@@ -34,6 +34,7 @@ Run the full life of a subscription business in one place:
         'views/subscription_plan_views.xml',
         'views/discount_rule_views.xml',
         'views/billing_views.xml',
+        'views/subscription_dashboard_views.xml',
         'views/portal_templates.xml',
         'views/subscription_menus.xml',
         'data/cron_data.xml',
