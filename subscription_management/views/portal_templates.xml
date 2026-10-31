@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <template id="portal_my_home_subscription" name="Subscriptions" inherit_id="portal.portal_my_home" customize_show="True" priority="30">
+        <xpath expr="//div[hasclass('o_portal_docs')]" position="inside">
+            <t t-call="portal.portal_docs_entry">
+                <t t-set="title">Subscriptions</t>
+                <t t-set="url" t-value="'/my/subscriptions'"/>
+                <t t-set="placeholder_count" t-value="'subscription_count'"/>
+            </t>
+        </xpath>
+    </template>
+
+    <template id="portal_my_subscriptions" name="My Subscriptions">
+        <t t-call="portal.portal_layout">
+            <t t-set="breadcrumbs_searchbar" t-value="True"/>
+
+            <t t-call="portal.portal_searchbar">
+                <t t-set="title">Subscriptions</t>
+            </t>
+
+            <t t-if="not subscriptions">
+                <p>There are currently no subscriptions for your account.</p>
+            </t>
+            <t t-if="subscriptions" t-call="portal.portal_table">
+                <thead>
+                    <tr class="active">
+                        <th>Reference</th>
+                        <th>Plan</th>
+                        <th>Start</th>
+                        <th>Expiry</th>
+                        <th class="text-end">Amount</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <t t-foreach="subscriptions" t-as="sub">
+                    <tr>
+                        <td>
+                            <a t-attf-href="/my/subscription/#{sub.id}"><t t-esc="sub.name"/></a>
+                        </td>
+                        <td><t t-esc="sub.plan_id.name"/></td>
+                        <td><t t-esc="sub.start_date"/></td>
+                        <td><t t-esc="sub.expiry_date or ''"/></td>
+                        <td class="text-end">
+                            <span t-field="sub.amount_total" t-options='{"widget": "monetary", "display_currency": sub.currency_id}'/>
+                        </td>
+                        <td>
+                            <span t-attf-class="badge rounded-pill #{'bg-success' if sub.state == 'active' else 'bg-warning' if sub.state == 'paused' else 'bg-secondary'}">
+                                <t t-esc="dict(sub._fields['state'].selection).get(sub.state)"/>
+                            </span>
+                        </td>
+                    </tr>
+                </t>
+            </t>
+        </t>
+    </template>
+
+    <template id="portal_subscription_detail" name="Subscription Detail">
+        <t t-call="portal.portal_layout">
+            <t t-set="title"><t t-esc="subscription.name"/></t>
+
+            <div class="row mt16">
+                <div class="col-12">
+                    <h4>
+                        <t t-esc="subscription.name"/>
+                        <span class="badge bg-info ms-2"><t t-esc="dict(subscription._fields['state'].selection).get(subscription.state)"/></span>
+                    </h4>
+                </div>
+            </div>
+
+            <div class="row mt16 g-2">
+                <div class="col-md-6">
+                    <strong>Plan:</strong> <t t-esc="subscription.plan_id.name"/>
+                </div>
+                <div class="col-md-6">
+                    <strong>Billing Period:</strong> <t t-esc="dict(subscription.plan_id._fields['billing_period'].selection).get(subscription.plan_id.billing_period)"/>
+                </div>
+                <div class="col-md-6">
+                    <strong>Start Date:</strong> <t t-esc="subscription.start_date"/>
+                </div>
+                <div class="col-md-6">
+                    <strong>Expiry Date:</strong> <t t-esc="subscription.expiry_date or 'Open-ended'"/>
+                </div>
+                <div class="col-md-6">
+                    <strong>Next Invoice:</strong> <t t-esc="subscription.next_invoice_date or '-'"/>
+                </div>
+                <div class="col-md-6">
+                    <strong>Total:</strong>
+                    <span t-field="subscription.amount_total" t-options='{"widget": "monetary", "display_currency": subscription.currency_id}'/>
+                </div>
+            </div>
+
+            <h5 class="mt32">Lines</h5>
+            <table class="table table-sm">
+                <thead>
+                    <tr><th>Product</th><th class="text-end">Qty</th><th class="text-end">Unit</th><th class="text-end">Subtotal</th></tr>
+                </thead>
+                <tbody>
+                    <t t-foreach="subscription.line_ids" t-as="line">
+                        <tr>
+                            <td><t t-esc="line.product_id.display_name"/></td>
+                            <td class="text-end"><t t-esc="line.quantity"/></td>
+                            <td class="text-end">
+                                <span t-field="line.price_unit" t-options='{"widget": "monetary", "display_currency": subscription.currency_id}'/>
+                            </td>
+                            <td class="text-end">
+                                <span t-field="line.price_subtotal" t-options='{"widget": "monetary", "display_currency": subscription.currency_id}'/>
+                            </td>
+                        </tr>
+                    </t>
+                </tbody>
+            </table>
+
+            <t t-if="subscription.invoice_ids">
+                <h5 class="mt32">Invoices</h5>
+                <table class="table table-sm">
+                    <thead>
+                        <tr><th>Invoice</th><th>Date</th><th class="text-end">Total</th><th>Status</th></tr>
+                    </thead>
+                    <tbody>
+                        <t t-foreach="subscription.invoice_ids" t-as="inv">
+                            <tr>
+                                <td><t t-esc="inv.name"/></td>
+                                <td><t t-esc="inv.invoice_date"/></td>
+                                <td class="text-end">
+                                    <span t-field="inv.amount_total" t-options='{"widget": "monetary", "display_currency": inv.currency_id}'/>
+                                </td>
+                                <td><t t-esc="inv.payment_state"/></td>
+                            </tr>
+                        </t>
+                    </tbody>
+                </table>
+            </t>
+        </t>
+    </template>
+
+</odoo>
