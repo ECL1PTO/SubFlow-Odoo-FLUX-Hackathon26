@@ -36,7 +36,7 @@
                             <field name="discount_type"/>
                             <field name="discount_value"/>
                             <field name="apply_on"/>
-                            <field name="product_ids" widget="many2many_tags" invisible="apply_on != 'product'"/>
+                            <field name="product_ids" widget="many2many_tags" invisible="apply_on != 'product'" required="apply_on == 'product'"/>
                             <field name="active"/>
                         </group>
                         <group string="Conditions &amp; Usage Limits">

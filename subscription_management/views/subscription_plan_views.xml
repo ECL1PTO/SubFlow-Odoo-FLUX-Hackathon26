@@ -26,6 +26,9 @@
         <field name="model">subscription.plan</field>
         <field name="arch" type="xml">
             <form string="Subscription Plan">
+                <header>
+                    <button name="toggle_active" type="object" string="Archive / Unarchive" class="btn-secondary"/>
+                </header>
                 <sheet>
                     <div class="oe_title">
                         <h1>

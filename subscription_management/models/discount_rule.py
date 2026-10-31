@@ -58,10 +58,6 @@ class DiscountRule(models.Model):
     )
     date_end = fields.Date(string='End Date', required=True)
 
-    # Alias fields in case teammate code references start_date / end_date
-    start_date = fields.Date(related='date_start', store=True, readonly=False)
-    end_date = fields.Date(related='date_end', store=True, readonly=False)
-
     usage_limit = fields.Integer(string='Usage Cap (0 = Unlimited)', default=0)
     current_usage = fields.Integer(string='Times Used', default=0, readonly=True)
 
@@ -79,37 +75,34 @@ class DiscountRule(models.Model):
         rules = self.search([
             ('active', '=', True),
             ('date_start', '<=', today),
-            '|',
-            ('date_end', '=', False),
             ('date_end', '>=', today),
         ])
+        
         valid_rules = self.env['discount.rule']
-        lines = getattr(subscription, 'line_ids', self.env['product.product'])
-        total_qty = sum(lines.mapped('quantity')) if lines else 0.0
-        sub_untaxed = getattr(subscription, 'amount_untaxed', 0.0)
+        total_qty = sum(subscription.line_ids.mapped('quantity')) if subscription.line_ids else 0.0
 
         for rule in rules:
             if rule.usage_limit > 0 and rule.current_usage >= rule.usage_limit:
                 continue
-            if sub_untaxed < rule.min_purchase_amount:
+            if subscription.amount_untaxed < rule.min_purchase_amount:
                 continue
             if total_qty < rule.min_quantity:
                 continue
-            if rule.apply_on == 'product' and lines:
-                sub_products = lines.mapped('product_id')
+            if rule.apply_on == 'product' and subscription.line_ids:
+                sub_products = subscription.line_ids.mapped('product_id')
                 if not (sub_products & rule.product_ids):
                     continue
             valid_rules |= rule
+            
         return valid_rules
 
     def _calculate_discount_amount(self, subscription):
         self.ensure_one()
-        lines = getattr(subscription, 'line_ids', False)
-        if self.apply_on == 'product' and lines:
-            matching_lines = lines.filtered(lambda l: l.product_id in self.product_ids)
+        if self.apply_on == 'product' and subscription.line_ids:
+            matching_lines = subscription.line_ids.filtered(lambda l: l.product_id in self.product_ids)
             base_amount = sum(matching_lines.mapped('price_subtotal'))
         else:
-            base_amount = getattr(subscription, 'amount_untaxed', 0.0)
+            base_amount = subscription.amount_untaxed
 
         if self.discount_type == 'fixed':
             return min(self.discount_value, base_amount)
