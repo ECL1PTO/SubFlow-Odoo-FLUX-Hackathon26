@@ -30,6 +30,8 @@ Run the full life of a subscription business in one place:
         'security/subscription_security.xml',
         'security/ir.model.access.csv',
         'data/subscription_sequence.xml',
+        'views/subscription_views.xml',
+        'views/subscription_menus.xml',
     ],
     'installable': True,
     'application': True,
