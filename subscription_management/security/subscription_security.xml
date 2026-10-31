@@ -26,7 +26,6 @@
             <field name="name">Subscription: multi-company</field>
             <field name="model_id" ref="model_subscription_subscription"/>
             <field name="domain_force">['|', ('company_id', '=', False), ('company_id', 'in', company_ids)]</field>
-            <field name="global" eval="True"/>
         </record>
 
         <record id="subscription_rule_staff" model="ir.rule">
