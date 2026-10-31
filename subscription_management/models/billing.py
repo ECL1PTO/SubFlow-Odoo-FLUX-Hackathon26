@@ -39,22 +39,18 @@ class AccountMove(models.Model):
             if move.state == 'draft':
                 move.action_post()
             payment_date = move.payment_date or fields.Date.context_today(move)
-            payment = self.env['account.payment'].create({
-                'payment_type': 'inbound',
-                'partner_type': 'customer',
-                'partner_id': move.partner_id.id,
-                'amount': move.amount_residual or move.amount_total,
-                'date': payment_date,
-                'ref': move.payment_note or move.name,
-                'journal_id': self.env['account.journal'].search(
-                    [('type', 'in', ('bank', 'cash')), ('company_id', '=', move.company_id.id)],
-                    limit=1,
-                ).id,
+            amount = move.amount_residual or move.amount_total
+            wizard = self.env['account.payment.register'].with_context(
+                active_model='account.move', active_ids=move.ids,
+            ).create({
+                'payment_date': payment_date,
+                'amount': amount,
+                'communication': move.payment_note or move.name,
             })
-            payment.action_post()
+            wizard.action_create_payments()
             move.message_post(
                 body=_('Payment of %s recorded via %s on %s.') % (
-                    payment.amount, move.payment_method, payment_date,
+                    amount, move.payment_method, payment_date,
                 )
             )
         return True
