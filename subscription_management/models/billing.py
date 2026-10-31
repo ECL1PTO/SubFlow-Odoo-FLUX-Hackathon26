@@ -190,12 +190,17 @@ class SubscriptionBilling(models.Model):
     def get_billing_dashboard_stats(self):
         """Revenue, outstanding amount and overdue count, aggregated in SQL.
 
-        Only posted customer invoices count, so draft documents never inflate
+        Only posted customer invoices raised from a subscription count, so
+        neither draft documents nor unrelated sales inflate
         the figures. Returned as a plain dict for the dashboard and the portal.
         """
         Move = self.env['account.move']
         today = fields.Date.context_today(self)
-        posted_invoices = [('move_type', '=', 'out_invoice'), ('state', '=', 'posted')]
+        posted_invoices = [
+            ('move_type', '=', 'out_invoice'),
+            ('state', '=', 'posted'),
+            ('subscription_id', '!=', False),
+        ]
 
         [[total_revenue]] = Move._read_group(
             posted_invoices + [('payment_state', '=', 'paid')],
