@@ -1,10 +1,12 @@
-from odoo import fields, models
+from odoo import _, api, fields, models
 
 
 class SubscriptionDashboard(models.TransientModel):
     _name = 'subscription.dashboard'
     _description = 'Subscription Dashboard'
+    _rec_name = 'name'
 
+    name = fields.Char(default='Subscription Overview', readonly=True)
     active_subscription_count = fields.Integer(string='Active Subscriptions', readonly=True)
     total_revenue = fields.Monetary(
         string='Total Revenue', currency_field='currency_id', readonly=True,
@@ -28,15 +30,26 @@ class SubscriptionDashboard(models.TransientModel):
         values.update(self._dashboard_values())
         return values
 
+    @api.model
+    def action_open_dashboard(self):
+        """Open a saved record, so the breadcrumb reads as a dashboard, not 'New'."""
+        dashboard = self.create({})
+        return self._dashboard_action(dashboard.id)
+
     def action_refresh(self):
         self.ensure_one()
         self.write(self._dashboard_values())
+        return self._dashboard_action(self.id)
+
+    def _dashboard_action(self, res_id):
         return {
             'type': 'ir.actions.act_window',
+            'name': _('Dashboard'),
             'res_model': self._name,
-            'res_id': self.id,
+            'res_id': res_id,
             'view_mode': 'form',
-            'target': 'inline',
+            'views': [(self.env.ref('subscription_management.view_subscription_dashboard_form').id, 'form')],
+            'target': 'current',
         }
 
     def _dashboard_values(self):

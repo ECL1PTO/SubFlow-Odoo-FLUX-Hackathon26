@@ -41,6 +41,11 @@ Run the full life of a subscription business in one place:
         'data/demo_data.xml',
     ],
 
+    'assets': {
+        'web.assets_backend': [
+            'subscription_management/static/src/css/dashboard.css',
+        ],
+    },
     'installable': True,
     'application': True,
 }

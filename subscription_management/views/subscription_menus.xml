@@ -9,7 +9,7 @@
     <menuitem id="menu_subscription_dashboard"
               name="Dashboard"
               parent="menu_subscription_root"
-              action="action_subscription_dashboard"
+              action="action_subscription_dashboard_open"
               sequence="5"/>
 
     <menuitem id="menu_subscription_operations"
