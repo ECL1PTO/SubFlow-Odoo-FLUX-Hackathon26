@@ -1,14 +1,25 @@
 from dateutil.relativedelta import relativedelta
 
-from odoo import _, api, fields, models
+from odoo import models, fields, api, _
 from odoo.exceptions import UserError
+from datetime import date
 
-PERIOD_DELTA = {
-    'daily': lambda n: relativedelta(days=n),
-    'weekly': lambda n: relativedelta(weeks=n),
-    'monthly': lambda n: relativedelta(months=n),
-    'yearly': lambda n: relativedelta(years=n),
-}
+class AccountMove(models.Model):
+    _inherit = 'account.move'
+
+    subscription_id = fields.Many2one(
+        'subscription.subscription',
+        string="Subscription",
+        ondelete='set null'
+    )
+    payment_method = fields.Selection([
+        ('bank', 'Bank Transfer'),
+        ('credit_card', 'Credit Card'),
+        ('cash', 'Cash'),
+        ('other', 'Other')
+    ], string="Payment Method")
+    payment_date = fields.Date(string="Payment Date")
+    payment_note = fields.Text(string="Payment Note")
 
 
 class AccountMove(models.Model):

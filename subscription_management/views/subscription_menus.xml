@@ -35,4 +35,12 @@
               action="action_discount_rule"
               sequence="20"/>
 
+        <!-- Invoices & Payments Menu item (Member 2) -->
+    <menuitem id="menu_subscription_invoices"
+              name="Invoices"
+              parent="menu_subscription_root"
+              action="action_subscription_invoices"
+              sequence="20"/>
+
+
 </odoo>
