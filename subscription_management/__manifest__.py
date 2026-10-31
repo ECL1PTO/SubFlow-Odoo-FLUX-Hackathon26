@@ -31,12 +31,12 @@ Run the full life of a subscription business in one place:
         'security/ir.model.access.csv',
         'data/subscription_sequence.xml',
         'views/subscription_views.xml',
-        'views/subscription_menus.xml',
         'views/subscription_plan_views.xml',
         'views/discount_rule_views.xml',
-        'views/billing_views.xml',  #Added Member 2 payment/invoice views
-        'data/demo_data.xml',
+        'views/billing_views.xml',
+        'views/subscription_menus.xml',
         'data/cron_data.xml',
+        'data/demo_data.xml',
     ],
 
     'installable': True,

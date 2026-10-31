@@ -1,33 +1,63 @@
 from dateutil.relativedelta import relativedelta
 
-from odoo import models, fields, api, _
+from odoo import _, api, fields, models
 from odoo.exceptions import UserError
-from datetime import date
 
-class AccountMove(models.Model):
-    _inherit = 'account.move'
-
-    subscription_id = fields.Many2one(
-        'subscription.subscription',
-        string="Subscription",
-        ondelete='set null'
-    )
-    payment_method = fields.Selection([
-        ('bank', 'Bank Transfer'),
-        ('credit_card', 'Credit Card'),
-        ('cash', 'Cash'),
-        ('other', 'Other')
-    ], string="Payment Method")
-    payment_date = fields.Date(string="Payment Date")
-    payment_note = fields.Text(string="Payment Note")
+PERIOD_DELTA = {
+    'daily': lambda n: relativedelta(days=n),
+    'weekly': lambda n: relativedelta(weeks=n),
+    'monthly': lambda n: relativedelta(months=n),
+    'yearly': lambda n: relativedelta(years=n),
+}
 
 
 class AccountMove(models.Model):
     _inherit = 'account.move'
 
     subscription_id = fields.Many2one(
-        'subscription.subscription', string='Subscription', index=True, ondelete='set null', copy=False
+        'subscription.subscription', string='Subscription',
+        index=True, ondelete='set null', copy=False,
     )
+    payment_method = fields.Selection(
+        [
+            ('bank', 'Bank Transfer'),
+            ('credit_card', 'Credit Card'),
+            ('cash', 'Cash'),
+            ('other', 'Other'),
+        ],
+        string='Payment Method', copy=False,
+    )
+    payment_date = fields.Date(copy=False)
+    payment_note = fields.Text(copy=False)
+
+    def action_register_subscription_payment(self):
+        for move in self:
+            if move.payment_state == 'paid':
+                raise UserError(_('Invoice %s is already paid.') % move.name)
+            if not move.payment_method:
+                raise UserError(_('Choose a payment method before recording a payment on %s.') % move.name)
+            if move.state == 'draft':
+                move.action_post()
+            payment_date = move.payment_date or fields.Date.context_today(move)
+            payment = self.env['account.payment'].create({
+                'payment_type': 'inbound',
+                'partner_type': 'customer',
+                'partner_id': move.partner_id.id,
+                'amount': move.amount_residual or move.amount_total,
+                'date': payment_date,
+                'ref': move.payment_note or move.name,
+                'journal_id': self.env['account.journal'].search(
+                    [('type', 'in', ('bank', 'cash')), ('company_id', '=', move.company_id.id)],
+                    limit=1,
+                ).id,
+            })
+            payment.action_post()
+            move.message_post(
+                body=_('Payment of %s recorded via %s on %s.') % (
+                    payment.amount, move.payment_method, payment_date,
+                )
+            )
+        return True
 
 
 class SubscriptionBilling(models.Model):
@@ -82,8 +112,6 @@ class SubscriptionBilling(models.Model):
             for line in self.line_ids
         ]
 
-        # Fixed-amount discounts cannot be expressed as a per-line percentage,
-        # so they are added as their own negative line.
         for rule in discounts.filtered(lambda r: r.discount_type == 'fixed'):
             amount = rule._calculate_discount_amount(self)
             if amount > 0:
