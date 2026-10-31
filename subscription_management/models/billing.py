@@ -45,10 +45,43 @@ class SubscriptionBilling(models.Model):
                 subscription.next_invoice_date = subscription.start_date
         return res
 
-    def _prepare_invoice_values(self):
+    def _line_discount_percent(self, line, discounts):
+        """Percentage discounts that apply to this line, capped at 100."""
+        percent = sum(
+            rule.discount_value for rule in discounts
+            if rule.discount_type == 'percentage'
+            and (rule.apply_on == 'subscription' or line.product_id in rule.product_ids)
+        )
+        return min(percent, 100.0)
+
+    def _prepare_invoice_values(self, discounts):
         self.ensure_one()
         if not self.line_ids:
             raise UserError(_('Cannot invoice %s because it has no lines.') % self.name)
+
+        invoice_lines = [
+            (0, 0, {
+                'product_id': line.product_id.id,
+                'name': line.name or line.product_id.display_name,
+                'quantity': line.quantity,
+                'price_unit': line.price_unit,
+                'discount': self._line_discount_percent(line, discounts),
+                'tax_ids': [(6, 0, line.tax_ids.ids)],
+            })
+            for line in self.line_ids
+        ]
+
+        # Fixed-amount discounts cannot be expressed as a per-line percentage,
+        # so they are added as their own negative line.
+        for rule in discounts.filtered(lambda r: r.discount_type == 'fixed'):
+            amount = rule._calculate_discount_amount(self)
+            if amount > 0:
+                invoice_lines.append((0, 0, {
+                    'name': _('Discount: %s') % rule.name,
+                    'quantity': 1.0,
+                    'price_unit': -amount,
+                }))
+
         return {
             'move_type': 'out_invoice',
             'partner_id': self.partner_id.id,
@@ -57,22 +90,18 @@ class SubscriptionBilling(models.Model):
             'invoice_date': self.next_invoice_date or fields.Date.context_today(self),
             'invoice_payment_term_id': self.payment_term_id.id or False,
             'subscription_id': self.id,
-            'invoice_line_ids': [
-                (0, 0, {
-                    'product_id': line.product_id.id,
-                    'name': line.name or line.product_id.display_name,
-                    'quantity': line.quantity,
-                    'price_unit': line.price_unit,
-                    'tax_ids': [(6, 0, line.tax_ids.ids)],
-                })
-                for line in self.line_ids
-            ],
+            'invoice_line_ids': invoice_lines,
         }
 
     def generate_invoice(self):
         invoices = self.env['account.move']
         for subscription in self:
-            invoice = self.env['account.move'].create(subscription._prepare_invoice_values())
+            discounts = self.env['discount.rule']._get_applicable_discounts(subscription)
+            invoice = self.env['account.move'].create(
+                subscription._prepare_invoice_values(discounts)
+            )
+            for rule in discounts:
+                rule.current_usage += 1
             subscription.last_invoiced_date = invoice.invoice_date
             subscription.next_invoice_date = invoice.invoice_date + subscription._period_delta()
             subscription.message_post(
