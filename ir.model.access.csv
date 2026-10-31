@@ -1,0 +1,13 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_subscription_subscription_staff,subscription.subscription.staff,model_subscription_subscription,group_subscription_staff,1,1,1,0
+access_subscription_subscription_admin,subscription.subscription.admin,model_subscription_subscription,group_subscription_admin,1,1,1,1
+access_subscription_subscription_portal,subscription.subscription.portal,model_subscription_subscription,base.group_portal,1,0,0,0
+access_subscription_line_staff,subscription.line.staff,model_subscription_line,group_subscription_staff,1,1,1,1
+access_subscription_line_admin,subscription.line.admin,model_subscription_line,group_subscription_admin,1,1,1,1
+access_subscription_line_portal,subscription.line.portal,model_subscription_line,base.group_portal,1,0,0,0
+access_subscription_plan_admin,subscription.plan.admin,model_subscription_plan,group_subscription_admin,1,1,1,1
+access_subscription_plan_staff,subscription.plan.staff,model_subscription_plan,group_subscription_staff,1,0,0,0
+access_discount_rule_admin,discount.rule.admin,model_discount_rule,group_subscription_admin,1,1,1,1
+access_discount_rule_staff,discount.rule.staff,model_discount_rule,group_subscription_staff,1,0,0,0
+access_subscription_dashboard_admin,subscription.dashboard.admin,model_subscription_dashboard,group_subscription_admin,1,0,0,0
+access_subscription_dashboard_staff,subscription.dashboard.staff,model_subscription_dashboard,group_subscription_staff,1,0,0,0
