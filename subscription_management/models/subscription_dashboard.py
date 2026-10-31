@@ -36,45 +36,11 @@ class SubscriptionDashboard(models.TransientModel):
     @api.depends()
     def _compute_dashboard(self):
         Subscription = self.env['subscription.subscription']
-        Move = self.env['account.move']
-
-        active_count = Subscription.search_count([
-            ('state', '=', 'active')
-        ])
-
-        invoice_domain = [
-            ('move_type', '=', 'out_invoice'),
-            ('state', '=', 'posted')
-        ]
-
-        paid_data = Move._read_group(
-            invoice_domain + [
-                ('payment_state', '=', 'paid')
-            ],
-            [],
-            ['amount_total_signed:sum']
-        )
-
-        unpaid_data = Move._read_group(
-            invoice_domain + [
-                ('amount_residual', '>', 0)
-            ],
-            [],
-            ['amount_residual_signed:sum']
-        )
-
-        overdue_count = Move.search_count(
-            invoice_domain + [
-                ('amount_residual', '>', 0),
-                ('invoice_date_due', '<', fields.Date.today())
-            ]
-        )
-
-        revenue = paid_data[0][0] or 0.0 if paid_data else 0.0
-        outstanding = unpaid_data[0][0] or 0.0 if unpaid_data else 0.0
+        active_count = Subscription.search_count([('state', '=', 'active')])
+        stats = Subscription.get_billing_dashboard_stats()
 
         for dashboard in self:
             dashboard.active_subscription_count = active_count
-            dashboard.total_revenue = revenue
-            dashboard.outstanding_amount = outstanding
-            dashboard.overdue_count = overdue_count
+            dashboard.total_revenue = stats['total_revenue']
+            dashboard.outstanding_amount = stats['total_outstanding']
+            dashboard.overdue_count = stats['overdue_count']

@@ -54,8 +54,7 @@ class SubscriptionPortal(CustomerPortal):
     def portal_subscription_detail(self, subscription_id, **kw):
         try:
             subscription = request.env['subscription.subscription'].browse(subscription_id)
-            subscription.check_access_rights('read')
-            subscription.check_access_rule('read')
+            subscription.check_access('read')
         except (AccessError, MissingError):
             return request.redirect('/my')
 

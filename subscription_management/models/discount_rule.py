@@ -69,6 +69,12 @@ class DiscountRule(models.Model):
             if rule.discount_type == 'percentage' and rule.discount_value > 100:
                 raise ValidationError(_('Percentage discount cannot exceed 100%.'))
 
+    @api.constrains('date_start', 'date_end')
+    def _check_dates(self):
+        for rule in self:
+            if rule.date_end < rule.date_start:
+                raise ValidationError(_('The end date cannot be earlier than the start date.'))
+
     @api.model
     def _get_applicable_discounts(self, subscription):
         today = fields.Date.context_today(self)

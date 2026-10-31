@@ -37,7 +37,7 @@ class SubscriptionPlan(models.Model):
     date_start = fields.Date(string='Start Date')
     date_end = fields.Date(string='End Date')
 
-    # Required boolean flags requested by teammates & spec
+    # Per-plan policy flags that gate the subscription lifecycle actions.
     auto_close = fields.Boolean(string='Auto-Close on Expiry', default=True)
     allow_close_early = fields.Boolean(string='Allow Early Closure', default=False)
     allow_pause = fields.Boolean(string='Allow Pause', default=True)

@@ -150,6 +150,15 @@ class SubscriptionLine(models.Model):
             line.price_total = taxes['total_included']
             line.price_tax = taxes['total_included'] - taxes['total_excluded']
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        """Always store a description, so the portal never has to read the product."""
+        for vals in vals_list:
+            if not vals.get('name') and vals.get('product_id'):
+                product = self.env['product.product'].browse(vals['product_id'])
+                vals['name'] = product.get_product_multiline_description_sale()
+        return super().create(vals_list)
+
     @api.onchange('product_id')
     def _onchange_product_id(self):
         for line in self:
