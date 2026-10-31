@@ -178,3 +178,41 @@ class SubscriptionBilling(models.Model):
             except UserError:
                 continue
         return True
+
+class SubscriptionDashboardMetrics(models.Model):
+    _inherit = 'subscription.subscription'
+
+    @api.model
+    def get_billing_dashboard_stats(self):
+        """Uses read_group to compute total revenue, outstanding amount, and overdue count cleanly."""
+        Move = self.env['account.move']
+        today = fields.Date.today()
+
+        # 1. Total Revenue (Paid Invoices)
+        paid_data = Move.read_group(
+            domain=[('move_type', '=', 'out_invoice'), ('payment_state', '=', 'paid')],
+            fields=['amount_total:sum'],
+            groupby=[]
+        )
+        total_revenue = paid_data[0]['amount_total'] if paid_data and paid_data[0]['amount_total'] else 0.0
+
+        # 2. Outstanding Amount (Unpaid / Partial Invoices)
+        outstanding_data = Move.read_group(
+            domain=[('move_type', '=', 'out_invoice'), ('payment_state', '!=', 'paid'), ('state', '=', 'posted')],
+            fields=['amount_total:sum'],
+            groupby=[]
+        )
+        total_outstanding = outstanding_data[0]['amount_total'] if outstanding_data and outstanding_data[0]['amount_total'] else 0.0
+
+        # 3. Overdue Invoices Count
+        overdue_count = Move.search_count([
+            ('move_type', '=', 'out_invoice'),
+            ('payment_state', '!=', 'paid'),
+            ('invoice_date_due', '<', today)
+        ])
+
+        return {
+            'total_revenue': total_revenue,
+            'total_outstanding': total_outstanding,
+            'overdue_count': overdue_count,
+        }
