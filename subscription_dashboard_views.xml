@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+
+    <record id="view_subscription_dashboard_form" model="ir.ui.view">
+        <field name="name">subscription.dashboard.form</field>
+        <field name="model">subscription.dashboard</field>
+        <field name="arch" type="xml">
+            <form string="Subscription Dashboard" create="0" edit="0">
+                <sheet>
+                    <group>
+                        <group string="Subscriptions">
+                            <field name="active_subscription_count"/>
+                        </group>
+                        <group string="Revenue">
+                            <field name="total_revenue"/>
+                            <field name="outstanding_amount"/>
+                            <field name="overdue_count"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_subscription_dashboard" model="ir.actions.act_window">
+        <field name="name">Subscription Dashboard</field>
+        <field name="res_model">subscription.dashboard</field>
+        <field name="view_mode">form</field>
+        <field name="target">current</field>
+    </record>
+
+    <menuitem id="menu_subscription_dashboard"
+          name="Dashboard"
+          parent="menu_subscription_root"
+          action="action_subscription_dashboard"
+          sequence="1"
+          groups="group_subscription_admin"/>
+
+</odoo>
