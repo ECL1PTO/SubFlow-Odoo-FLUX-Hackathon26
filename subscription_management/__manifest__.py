@@ -34,6 +34,7 @@ Run the full life of a subscription business in one place:
         'views/subscription_plan_views.xml',
         'views/discount_rule_views.xml',
         'views/subscription_menus.xml',
+        'data/cron_data.xml',
         'data/demo_data.xml',
     ],
     'installable': True,

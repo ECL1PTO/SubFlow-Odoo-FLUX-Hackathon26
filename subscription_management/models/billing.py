@@ -1,45 +1,112 @@
-from odoo import models, fields, api
-from datetime import date
+from dateutil.relativedelta import relativedelta
+
+from odoo import _, api, fields, models
+from odoo.exceptions import UserError
+
+PERIOD_DELTA = {
+    'daily': lambda n: relativedelta(days=n),
+    'weekly': lambda n: relativedelta(weeks=n),
+    'monthly': lambda n: relativedelta(months=n),
+    'yearly': lambda n: relativedelta(years=n),
+}
+
+
+class AccountMove(models.Model):
+    _inherit = 'account.move'
+
+    subscription_id = fields.Many2one(
+        'subscription.subscription', string='Subscription', index=True, ondelete='set null', copy=False
+    )
+
 
 class SubscriptionBilling(models.Model):
     _inherit = 'subscription.subscription'
 
-    last_invoiced_date = fields.Date(
-        string="Last Invoiced Date", 
-        help="Tracks the date an invoice was last generated to prevent duplicate billing."
-    )
-    invoice_ids = fields.One2many(
-        'account.move', 
-        'computed_subscription_id', 
-        string="Invoices"
-    )
+    last_invoiced_date = fields.Date(readonly=True, copy=False)
+    next_invoice_date = fields.Date(index=True, copy=False, tracking=True)
+    invoice_ids = fields.One2many('account.move', 'subscription_id', string='Invoices')
+    invoice_count = fields.Integer(compute='_compute_invoice_count')
+
+    @api.depends('invoice_ids')
+    def _compute_invoice_count(self):
+        for subscription in self:
+            subscription.invoice_count = len(subscription.invoice_ids)
+
+    def _period_delta(self):
+        self.ensure_one()
+        plan = self.plan_id
+        interval = max(plan.billing_interval or 1, 1)
+        return PERIOD_DELTA[plan.billing_period](interval)
+
+    def action_start(self):
+        res = super().action_start()
+        for subscription in self:
+            if not subscription.next_invoice_date:
+                subscription.next_invoice_date = subscription.start_date
+        return res
+
+    def _prepare_invoice_values(self):
+        self.ensure_one()
+        if not self.line_ids:
+            raise UserError(_('Cannot invoice %s because it has no lines.') % self.name)
+        return {
+            'move_type': 'out_invoice',
+            'partner_id': self.partner_id.id,
+            'currency_id': self.currency_id.id,
+            'company_id': self.company_id.id,
+            'invoice_date': self.next_invoice_date or fields.Date.context_today(self),
+            'invoice_payment_term_id': self.payment_term_id.id or False,
+            'subscription_id': self.id,
+            'invoice_line_ids': [
+                (0, 0, {
+                    'product_id': line.product_id.id,
+                    'name': line.name or line.product_id.display_name,
+                    'quantity': line.quantity,
+                    'price_unit': line.price_unit,
+                    'tax_ids': [(6, 0, line.tax_ids.ids)],
+                })
+                for line in self.line_ids
+            ],
+        }
+
+    def generate_invoice(self):
+        invoices = self.env['account.move']
+        for subscription in self:
+            invoice = self.env['account.move'].create(subscription._prepare_invoice_values())
+            subscription.last_invoiced_date = invoice.invoice_date
+            subscription.next_invoice_date = invoice.invoice_date + subscription._period_delta()
+            subscription.message_post(
+                body=_('Invoice %s generated for this subscription.') % invoice.name
+            )
+            invoices |= invoice
+        return invoices
+
+    def action_view_invoices(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Invoices'),
+            'res_model': 'account.move',
+            'view_mode': 'list,form',
+            'domain': [('subscription_id', '=', self.id)],
+            'context': {'default_move_type': 'out_invoice', 'default_subscription_id': self.id},
+        }
 
     @api.model
     def _cron_generate_subscription_invoices(self):
-        """Automated daily cron to generate invoices for active subscriptions without duplicate billing."""
-        today = date.today()
-        
-        # Search for active subscriptions that haven't been invoiced yet today
-        active_subs = self.search([
+        today = fields.Date.context_today(self)
+        due = self.search([
             ('state', '=', 'active'),
-            '|', ('last_invoiced_date', '<', today), ('last_invoiced_date', '=', False)
+            ('next_invoice_date', '!=', False),
+            ('next_invoice_date', '<=', today),
         ])
-
-        for sub in active_subs:
-            # Build invoice values
-            invoice_vals = {
-                'move_type': 'out_invoice',
-                'partner_id': sub.customer_id.id if hasattr(sub, 'customer_id') else False,
-                'invoice_date': today,
-                'invoice_line_ids': [(0, 0, {
-                    'name': f"Subscription Billing - Plan: {sub.plan_id.name if hasattr(sub, 'plan_id') else 'Standard'} ",
-                    'quantity': 1.0,
-                    'price_unit': sub.plan_id.price if hasattr(sub, 'plan_id') else 0.0,
-                })],
-            }
-            
-            # Create the account.move invoice record
-            invoice = self.env['account.move'].create(invoice_vals)
-            
-            # Update the last invoiced date to completely block duplicate billing runs
-            sub.write({'last_invoiced_date': today})
+        for subscription in due:
+            if subscription.expiry_date and subscription.expiry_date < today:
+                if subscription.plan_id.auto_close:
+                    subscription.action_close()
+                continue
+            try:
+                subscription.generate_invoice()
+            except UserError:
+                continue
+        return True
