@@ -9,12 +9,16 @@ services:
       - subflow-db:/var/lib/postgresql/data
 
   odoo:
+version: '3.8'
+services:
+  web:
     image: odoo:18.0
     depends_on:
       - db
     ports:
       - "8069:8069"
     environment:
+<<<<<<< HEAD
       HOST: db
       USER: odoo
       PASSWORD: odoo
@@ -25,3 +29,24 @@ services:
 volumes:
   subflow-db:
   subflow-data:
+=======
+      - HOST=db
+      - USER=odoo
+      - PASSWORD=odoo
+    volumes:
+      - odoo-web-data:/var/lib/odoo
+      - .:/mnt/extra-addons
+
+  db:
+    image: postgres:15
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_PASSWORD=odoo
+      - POSTGRES_USER=odoo
+    volumes:
+      - odoo-db-data:/var/lib/postgresql/data
+
+volumes:
+  odoo-web-data:
+  odoo-db-data:
+>>>>>>> ce4d1fb (Member 2: Add automated billing cron and invoice generation)
