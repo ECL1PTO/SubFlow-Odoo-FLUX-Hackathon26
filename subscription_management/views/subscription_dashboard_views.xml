@@ -6,6 +6,9 @@
         <field name="model">subscription.dashboard</field>
         <field name="arch" type="xml">
             <form string="Subscription Dashboard" create="false" edit="false">
+                <header>
+                    <button name="action_refresh" string="Refresh" type="object" class="btn-primary"/>
+                </header>
                 <sheet>
                     <div class="oe_title">
                         <h1>Subscription Overview</h1>
