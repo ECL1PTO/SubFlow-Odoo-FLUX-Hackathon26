@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Brand Attribute & Values (+560 for Odoo Brand) -->
+        <record id="attr_brand" model="product.attribute">
+            <field name="name">Brand</field>
+            <field name="create_variant">always</field>
+        </record>
+
+        <record id="attr_val_brightloop_std" model="product.attribute.value">
+            <field name="name">Brightloop Standard</field>
+            <field name="attribute_id" ref="attr_brand"/>
+        </record>
+
+        <record id="attr_val_odoo_brand" model="product.attribute.value">
+            <field name="name">Odoo</field>
+            <field name="attribute_id" ref="attr_brand"/>
+            <field name="default_extra_price">560.0</field>
+        </record>
+
+        <!-- Product Template with Brand Variant -->
+        <record id="product_template_cloud_suite" model="product.template">
+            <field name="name">Brightloop Cloud Suite</field>
+            <field name="type">service</field>
+            <field name="list_price">1000.0</field>
+            <field name="standard_price">350.0</field>
+            <field name="description_sale">Core SaaS Subscription License</field>
+            <field name="attribute_line_ids" eval="[(0, 0, {
+                'attribute_id': ref('attr_brand'),
+                'value_ids': [(6, 0, [ref('attr_val_brightloop_std'), ref('attr_val_odoo_brand')])]
+            })]"/>
+        </record>
+
+        <!-- Default Subscription Plan -->
+        <record id="plan_monthly_standard" model="subscription.plan">
+            <field name="name">Monthly Business Plan</field>
+            <field name="billing_period">monthly</field>
+            <field name="price">1000.0</field>
+            <field name="min_quantity">1.0</field>
+            <field name="auto_close" eval="True"/>
+            <field name="allow_close_early" eval="True"/>
+            <field name="allow_pause" eval="True"/>
+            <field name="allow_renew" eval="True"/>
+        </record>
+    </data>
+</odoo>
